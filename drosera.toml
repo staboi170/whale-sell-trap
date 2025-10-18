@@ -7,11 +7,12 @@ drosera_address = "0x91cB447BaFc6e0EA0F4Fe056F5a9b1F14bb06e5D"
 
 [traps.whale_sell]
 path = "out/WhaleSellTrap.sol/WhaleSellTrap.json"
-response_contract = "0xD7BfF196Ea7080593807869d78a5A3E7909E29eC"   # replace after deployment
+response_contract = "0xA70c85244cfE32cFeB7B55314cbb69B518e6625E"
 response_function = "respondToWhaleSell(uint256,uint256,uint256)"
 cooldown_period_blocks = 33
 min_number_of_operators = 1
 max_number_of_operators = 2
 block_sample_size = 5
 private_trap = true
-whitelist = []
+whitelist = ["0x1B8849d29557b55F1185E2f44fE4100C8e4108e1"]
+address = "0xb680A89D74F625684F7d0f3CD3CC797e081AdA7E"
