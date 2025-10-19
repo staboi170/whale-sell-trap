@@ -1,27 +1,58 @@
-🐋 WhaleSellTrap
+#  🐋 WhaleSellTrap
 
-WhaleSellTrap is a Drosera
- smart trap designed to detect large sell-offs of a specific ERC20 token into a liquidity pool on the Hoodi network.
+WhaleSellTrap is a Drosera smart trap designed to detect large sell-offs of a specific ERC20 token into a liquidity pool on the Hoodi network.
 
 When the pool’s token balance suddenly increases by a significant amount, it indicates a whale has sold a large volume of tokens — and the trap responds automatically.
 
-⚙️ Overview
-Component	            Description
-Trap Contract	        WhaleSellTrap.sol — monitors pool token balances.
-Response Contract	    WhaleSellResponse.sol — logs detected whale sells (you deploy this).
-Network             	Hoodi (EVM-compatible)
-RPC                 	https://ethereum-hoodi-rpc.publicnode.com
-Drosera Relay       	https://relay.hoodi.drosera.io
-🧠 How It Works
+---
 
-Collect phase – The trap queries the ERC20 token’s balanceOf(pool) to see how many tokens are currently in the pool.
+## 📦 Prerequisites
 
-Compare phase – If the balance rises sharply (by ≥ 50,000 tokens), it infers a whale just sold.
+1. Install sudo and other pre-requisites :
+```bash
+apt update && apt install -y sudo && sudo apt-get update && sudo apt-get upgrade -y && sudo apt install curl ufw iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip libleveldb-dev -y
+```
+3. Install environment requirements:
+Drosera Cli
+```bash
+curl -L https://app.drosera.io/install | bash
+source /root/.bashrc
+droseraup
+```
+Foundry cli
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+source /root/.bashrc
+foundryup
+```
+Bun
+```bash
+curl -fsSL https://bun.sh/install | bash
+source /root/.bashrc
+```
+   
 
-Respond phase – Calls the respondToWhaleSell() function on your response contract, which can log or trigger any custom behavior.
+## ⚙️ Setup
 
-🧩 Key Parameters
-Variable	Value                                  	    Description
-TOKEN	    0x64f1904d1b419c6889BDf3238e31A138E258eA68	ERC20 token monitored
-POOL	    0xB683004402e07618c67745A4a7DBE99839388136	Liquidity pool address
-THRESHOLD	50,000 * 1e18	Minimum token inflow to trigger alert
+Clone this repository
+
+```bash
+git clone https://github.com/staboi170/whale-sell-trap
+cd whale-sell-trap
+```
+Compile contract
+
+```bash
+forge build
+```
+Whitelist wallet address
+```bash
+nano drosera.toml
+# Put your EVM public address funded with hoodi ETH in whitelist
+e.g ["0xedj..."]  
+```
+Deploy the trap
+```bash
+DROSERA_PRIVATE_KEY=xxx drosera apply
+```
+ Replace xxx with your EVM wallet privatekey (Ensure it's funded with Hoodi ETH, you can claim 1E from hoodifaucet.io)
