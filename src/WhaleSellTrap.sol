@@ -8,54 +8,73 @@ interface IERC20 {
 }
 
 interface IPool {
-    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+    function getReserves() external view returns (
+        uint112 reserve0,
+        uint112 reserve1,
+        uint32 blockTimestampLast
+    );
 }
 
 contract WhaleSellTrap is ITrap {
     // === CONFIGURATION ===
-
     address public constant TOKEN = 0x64f1904d1b419c6889BDf3238e31A138E258eA68;
-    address public constant POOL = 0xB683004402e07618c67745A4a7DBE99839388136;
-    uint256 public constant THRESHOLD = 50_000 * 1e18;
+    address public constant POOL  = 0xB683004402e07618c67745A4a7DBE99839388136;
 
-    // === COLLECT ===
+    /// @notice 100 = 1% threshold (100 bps). Can be tuned.
+    uint256 public constant THRESHOLD_BPS = 100;
+
+    // === COLLECT PHASE ===
     function collect() external view override returns (bytes memory) {
         uint256 tokenBalance = 0;
-        uint256 size;
-        address token = TOKEN;
-        address pool = POOL;
+        (uint112 r0, uint112 r1) = (0, 0);
 
-        // Avoid calling non-contracts
-        assembly {
-            size := extcodesize(token)
-        }
-        if (size > 0) {
-            try IERC20(token).balanceOf(pool) returns (uint256 bal) {
-                tokenBalance = bal;
-            } catch {
-                // Leave as 0 if call fails
-            }
-        }
+        // Safely load token balance from pool
+        try IERC20(TOKEN).balanceOf(POOL) returns (uint256 bal) {
+            tokenBalance = bal;
+        } catch {}
 
-        return abi.encode(tokenBalance);
+        // Try to get pool reserves (Uniswap-like pools)
+        try IPool(POOL).getReserves() returns (uint112 reserve0, uint112 reserve1, uint32) {
+            r0 = reserve0;
+            r1 = reserve1;
+        } catch {}
+
+        return abi.encode(tokenBalance, r0, r1, block.number);
     }
 
-    // === RESPOND DECISION ===
+    // === SHOULD RESPOND PHASE ===
     function shouldRespond(bytes[] calldata data)
         external
         pure
         override
         returns (bool, bytes memory)
     {
-        if (data.length < 2) return (false, bytes(""));
+        if (data.length < 2) return (false, "");
 
-        uint256 newBal = abi.decode(data[0], (uint256));
-        uint256 prevBal = abi.decode(data[1], (uint256));
+        // Decode latest and previous samples
+        (uint256 newBal, uint112 newR0, uint112 newR1, uint256 newBlock) =
+            abi.decode(data[0], (uint256, uint112, uint112, uint256));
+        (uint256 prevBal, uint112 prevR0, uint112 prevR1, ) =
+            abi.decode(data[1], (uint256, uint112, uint112, uint256));
 
-        if (newBal > prevBal && (newBal - prevBal) >= THRESHOLD) {
-            return (true, abi.encode(prevBal, newBal, newBal - prevBal));
+        if (newBal <= prevBal || prevBal == 0) {
+            return (false, "");
         }
 
-        return (false, bytes(""));
+        uint256 delta = newBal - prevBal;
+        uint256 bps   = (delta * 10_000) / prevBal;
+
+        // Optional reserve confirmation: if TOKEN is reserve0,
+        // a sell should increase token balance AND decrease reserve0 or increase quote side.
+        bool reserveConfirmsSell = false;
+        if (newR0 < prevR0) {
+            reserveConfirmsSell = true;
+        }
+
+        if (bps >= THRESHOLD_BPS && reserveConfirmsSell) {
+            return (true, abi.encode(prevBal, newBal, delta, newBlock));
+        }
+
+        return (false, "");
     }
 }
